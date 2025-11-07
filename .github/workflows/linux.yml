@@ -1,0 +1,90 @@
+name: Linux build and test
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+defaults:
+  run:
+    shell: bash -l -eo pipefail {0}
+
+jobs:
+  linux_build_from_conda_forge:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+        build_shared: [ON, OFF]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create build environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: ./environment-dev.yml
+          environment-name: build_env
+          cache-environment: true
+
+      - name: Configure using cmake
+        run: |
+          cmake -G Ninja \
+          -Bbuild \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+          -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
+          -DSPARROW_PYCAPSULE_BUILD_SHARED=${{ matrix.build_shared }} \
+          -DSPARROW_PYCAPSULE_BUILD_TESTS=ON
+
+      - name: Build sparrow-pycapsule
+        working-directory: build
+        run: cmake --build . --target sparrow-pycapsule
+
+      - name: Build tests
+        working-directory: build
+        run: cmake --build . --target test_sparrow_pycapsule_lib
+
+      - name: Run tests
+        working-directory: build
+        run: cmake --build . --target run_tests_with_junit_report
+
+      - name: Install
+        working-directory: build
+        run: cmake --install .
+
+  linux_build_fetch_from_source:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: [Release, Debug]
+        build_shared: [ON, OFF]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure using cmake
+        run: |
+          cmake -G Ninja \
+          -Bbuild \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DSPARROW_PYCAPSULE_BUILD_SHARED=${{ matrix.build_shared }} \
+          -DSPARROW_PYCAPSULE_BUILD_TESTS=ON \
+          -DFETCH_DEPENDENCIES_WITH_CMAKE=MISSING
+
+      - name: Build sparrow-pycapsule
+        working-directory: build
+        run: cmake --build . --target sparrow-pycapsule
+
+      - name: Build tests
+        working-directory: build
+        run: cmake --build . --target test_sparrow_pycapsule_lib
+
+      - name: Run tests
+        working-directory: build
+        run: cmake --build . --target run_tests_with_junit_report
+
+      - name: Install
+        working-directory: build
+        run: sudo cmake --install .
