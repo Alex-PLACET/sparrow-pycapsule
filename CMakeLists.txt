@@ -110,7 +110,7 @@ check_cxx_symbol_exists(_LIBCPP_VERSION ${header} LIBCPP)
 if(LIBCPP)
     message(STATUS "Using libc++")
 
-    # Allow the use of not visible yet availabile features, such
+    # Allow the use of not visible yet available features, such
     # as some formatter for new types.
     add_compile_definitions(_LIBCPP_DISABLE_AVAILABILITY)
 endif()
