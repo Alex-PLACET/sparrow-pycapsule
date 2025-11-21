@@ -171,7 +171,7 @@ def cpp_lib():
 def test_create_array_in_cpp(cpp_lib):
     """Test creating an array in C++ and importing to Python/Polars."""
     print("\n" + "=" * 70)
-    print("Test 1: C++ → Python (Create array in C++, import to Polars)")
+    print("Test 1: C++ -> Python (Create array in C++, import to Polars)")
     print("=" * 70)
     
     lib = cpp_lib
@@ -220,7 +220,7 @@ def test_create_array_in_cpp(cpp_lib):
 def test_polars_to_cpp(cpp_lib):
     """Test exporting Polars data to C++."""
     print("\n" + "=" * 70)
-    print("Test 2: Python → C++ (Export Polars to C++)")
+    print("Test 2: Python -> C++ (Export Polars to C++)")
     print("=" * 70)
     
     lib = cpp_lib
@@ -254,9 +254,9 @@ def test_polars_to_cpp(cpp_lib):
 
 
 def test_roundtrip(cpp_lib):
-    """Test round-trip: Python → C++ → Python."""
+    """Test round-trip: Python -> C++ -> Python."""
     print("\n" + "=" * 70)
-    print("Test 3: Round-trip (Python → C++ → Python)")
+    print("Test 3: Round-trip (Python -> C++ -> Python)")
     print("=" * 70)
     
     lib = cpp_lib
