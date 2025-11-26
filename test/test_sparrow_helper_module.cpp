@@ -1,12 +1,3 @@
-/**
- * @file test_sparrow_helper_module.cpp
- * @brief Native Python extension module for sparrow integration tests.
- *
- * This is a minimal native Python extension module that registers the
- * SparrowArray type and provides a function to create test arrays.
- * The higher-level helper logic is in sparrow_helpers.py.
- */
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
