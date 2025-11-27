@@ -161,35 +161,4 @@ if(Python_Interpreter_FOUND)
     )
     
     set_target_properties(run_sparrow_tests_direct PROPERTIES FOLDER "Tests utilities")
-    
-    # Custom target to check Sparrow dependencies
-    add_custom_target(check_sparrow_deps
-        COMMAND ${CMAKE_COMMAND} -E echo "Checking Sparrow integration test dependencies..."
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/check_deps.py
-        COMMAND ${CMAKE_COMMAND} -E echo "Environment variables that will be set:"
-        COMMAND ${CMAKE_COMMAND} -E echo "  TEST_SPARROW_HELPER_LIB_PATH=$<TARGET_FILE:test_sparrow_helper>"
-        COMMAND ${CMAKE_COMMAND} -E echo "  SPARROW_PYCAPSULE_LIB_PATH=$<TARGET_FILE:sparrow-pycapsule>"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Checking Sparrow test dependencies"
-        USES_TERMINAL
-    )
-    
-    set_target_properties(check_sparrow_deps PROPERTIES FOLDER "Tests utilities")
-    
-    # Minimal library loading test for debugging segfaults
-    add_custom_target(test_library_load
-        COMMAND ${CMAKE_COMMAND} -E env 
-            "TEST_SPARROW_HELPER_LIB_PATH=$<TARGET_FILE:test_sparrow_helper>"
-            "SPARROW_PYCAPSULE_LIB_PATH=$<TARGET_FILE:sparrow-pycapsule>"
-            "PYTHONUNBUFFERED=1"
-            ${Python_EXECUTABLE} -u ${CMAKE_CURRENT_SOURCE_DIR}/test_library_load.py
-        DEPENDS 
-            test_sparrow_helper
-            sparrow-pycapsule
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Testing library loading step-by-step"
-        USES_TERMINAL
-    )
-    
-    set_target_properties(test_library_load PROPERTIES FOLDER "Tests utilities")
 endif()
