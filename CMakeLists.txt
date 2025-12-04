@@ -262,6 +262,20 @@ if(SPARROW_PYCAPSULE_BUILD_PYTHON_MODULE)
     set_target_properties(sparrow_rockfinch PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${BINARY_BUILD_DIR}
     )
+
+    # Install Python module (for pip install / wheel building)
+    install(TARGETS sparrow_rockfinch
+        LIBRARY DESTINATION sparrow_rockfinch
+        RUNTIME DESTINATION sparrow_rockfinch
+    )
+    # Install __init__.py for the package
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/python/sparrow_rockfinch/__init__.py
+        DESTINATION sparrow_rockfinch
+    )
+    # Install py.typed marker for type hints
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/python/sparrow_rockfinch/py.typed
+        DESTINATION sparrow_rockfinch
+    )
 endif()
 
 # Tests
