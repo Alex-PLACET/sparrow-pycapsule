@@ -1,6 +1,3 @@
-#include <exception>
-#include <string_view>
-
 #include <sparrow-pycapsule/pycapsule.hpp>
 
 #include <sparrow/array.hpp>
@@ -91,8 +88,8 @@ namespace sparrow::pycapsule
         auto [arrow_array, arrow_schema] = extract_arrow_structures(std::move(arr));
 
         // Allocate heap copies for the PyCapsules
-        ArrowSchema* schema_ptr = new ArrowSchema(std::move(arrow_schema));
-        ArrowArray* array_ptr = new ArrowArray(std::move(arrow_array));
+        auto* schema_ptr = new ArrowSchema(arrow_schema);
+        auto* array_ptr = new ArrowArray(arrow_array);
 
         PyObject* schema_capsule = PyCapsule_New(
             schema_ptr,

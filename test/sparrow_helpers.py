@@ -11,6 +11,8 @@ import sys
 import os
 from pathlib import Path
 from typing import Any, Protocol, Tuple
+import importlib.util
+
 
 class ArrowArrayExportable(Protocol):
     """Protocol for objects implementing the Arrow PyCapsule Interface."""
@@ -41,29 +43,35 @@ class SparrowArrayType(ArrowArrayExportable, Protocol):
         ...
 
 
-def _setup_module_path() -> None:
-    """Add the build directory to Python path so we can import test_sparrow_helper."""
-    import importlib.util
-    
-    # Check for environment variable first (can be either LIB_PATH or PATH variant)
-    helper_path = os.environ.get('TEST_SPARROW_HELPER_LIB_PATH') or os.environ.get('TEST_SPARROW_HELPER_PATH')
+def _load_module_from_path(module_name: str, file_path: Path):
+    """Load a Python extension module from a file path."""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return module
+    raise ImportError(f"Could not load {module_name} from {file_path}")
+
+
+def _setup_modules() -> None:
+    """Set up the sparrow_rockfinch and test_sparrow_helper modules."""
+    # Load the main sparrow_rockfinch module
+    sparrow_path = os.environ.get('SPARROW_MODULE_PATH')
+    if sparrow_path:
+        sparrow_file = Path(sparrow_path)
+        if sparrow_file.exists():
+            _load_module_from_path("sparrow_rockfinch", sparrow_file)
+
+    # Load the test helper module
+    helper_path = os.environ.get('TEST_SPARROW_HELPER_LIB_PATH')
     if helper_path:
         helper_file = Path(helper_path)
         if helper_file.exists():
-            # Load module directly from the given path
-            spec = importlib.util.spec_from_file_location("test_sparrow_helper", helper_file)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules["test_sparrow_helper"] = module
-                spec.loader.exec_module(module)
-                return
-        # Also try adding the parent directory to path
-        module_dir = helper_file.parent
-        if module_dir.exists():
-            sys.path.insert(0, str(module_dir))
+            _load_module_from_path("test_sparrow_helper", helper_file)
             return
-
-    # Try to find in build directory
+    
+    # Fallback: try to find modules in build directory
     test_dir = Path(__file__).parent
     build_dirs = [
         test_dir.parent / "build" / "bin" / "Debug",
@@ -77,13 +85,16 @@ def _setup_module_path() -> None:
             return
 
     raise ImportError(
-        "Could not find test_sparrow_helper module. "
-        "Build the project first or set TEST_SPARROW_HELPER_LIB_PATH."
+        "Could not find sparrow_rockfinch or test_sparrow_helper module. "
+        "Build the project first or set SPARROW_MODULE_PATH and TEST_SPARROW_HELPER_LIB_PATH."
     )
 
 
-# Set up module path and import the C++ module
-_setup_module_path()
+# Set up modules
+_setup_modules()
 
-# Import the native Python extension module that provides SparrowArray
-from test_sparrow_helper import SparrowArray  # noqa: E402
+# Import from the sparrow_rockfinch module (try release first, then debug)
+try:
+    from sparrow_rockfinch import SparrowArray  # noqa: E402
+except ImportError:
+    from sparrow_rockfinchd import SparrowArray  # noqa: E402

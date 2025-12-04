@@ -26,8 +26,11 @@ from sparrow_helpers import (
     SparrowArrayType,
 )
 
-# Import the C++ module for create_test_array
-import test_sparrow_helper  # noqa: E402
+# Import the C++ module for create_test_array (try release first, then debug)
+try:
+    import test_sparrow_helper  # noqa: E402
+except ImportError:
+    import test_sparrow_helperd as test_sparrow_helper  # noqa: E402
 
 
 def arrow_array_to_series(
@@ -86,10 +89,11 @@ class TestSparrowToPolars:
             f"Expected type 'SparrowArray', got '{type_name}'"
         )
 
-        # Check the module-qualified name (test module, not production module)
+        # Check the module-qualified name (allow debug 'd' suffix)
         full_name = f"{type(sparrow_array).__module__}.{type_name}"
-        assert full_name == "test_sparrow_helper.SparrowArray", (
-            f"Expected 'test_sparrow_helper.SparrowArray', got '{full_name}'"
+        valid_names = ("sparrow_rockfinch.SparrowArray", "sparrow_rockfinchd.SparrowArray")
+        assert full_name in valid_names, (
+            f"Expected one of {valid_names}, got '{full_name}'"
         )
 
     def test_sparrow_to_polars_series(self):

@@ -246,6 +246,24 @@ if(BUILD_DOCS)
     add_subdirectory(docs)
 endif()
 
+# Python module
+# =============
+option(SPARROW_PYCAPSULE_BUILD_PYTHON_MODULE "Build the sparrow Python module" ON)
+message(STATUS "🔧 Build Python module: ${SPARROW_PYCAPSULE_BUILD_PYTHON_MODULE}")
+
+if(SPARROW_PYCAPSULE_BUILD_PYTHON_MODULE)
+    nanobind_add_module(sparrow_rockfinch src/sparrow_module.cpp)
+    target_link_libraries(sparrow_rockfinch PRIVATE sparrow-pycapsule sparrow::sparrow)
+    target_compile_features(sparrow_rockfinch PRIVATE cxx_std_20)
+    # Define the module name macro to match the output filename (includes debug suffix)
+    target_compile_definitions(sparrow_rockfinch PRIVATE
+        SPARROW_MODULE_NAME=$<TARGET_FILE_BASE_NAME:sparrow_rockfinch>
+    )
+    set_target_properties(sparrow_rockfinch PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${BINARY_BUILD_DIR}
+    )
+endif()
+
 # Tests
 # =====
 if(SPARROW_PYCAPSULE_BUILD_TESTS)

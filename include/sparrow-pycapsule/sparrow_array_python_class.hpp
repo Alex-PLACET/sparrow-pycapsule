@@ -50,14 +50,14 @@ namespace sparrow::pycapsule
          *
          * @return The size of the array.
          */
-        size_t size() const;
+        [[nodiscard]] size_t size() const;
 
         /**
          * @brief Get a const reference to the underlying sparrow array.
          *
          * @return The wrapped sparrow array.
          */
-        const sparrow::array& get_array() const;
+        [[nodiscard]] const sparrow::array& get_array() const;
 
     private:
         sparrow::array m_array;
