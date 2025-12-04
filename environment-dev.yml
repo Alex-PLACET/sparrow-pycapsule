@@ -9,6 +9,7 @@ dependencies:
   - sparrow-devel
   - python
   - nanobind
+  - nanobind-abi
   # Tests
   - doctest
   - polars
