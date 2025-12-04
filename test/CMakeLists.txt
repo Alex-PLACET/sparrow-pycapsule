@@ -127,6 +127,9 @@ else()
 endif()
 
 if(Python_Interpreter_FOUND)
+    # Get the directory containing the sparrow-pycapsule library for runtime
+    set(SPARROW_LIB_DIR "$<TARGET_FILE_DIR:sparrow-pycapsule>")
+    
     add_custom_target(run_sparrow_tests_direct
         COMMAND ${CMAKE_COMMAND} -E echo "=================================="
         COMMAND ${CMAKE_COMMAND} -E echo "Sparrow Integration Test Runner"
@@ -139,12 +142,15 @@ if(Python_Interpreter_FOUND)
         COMMAND ${CMAKE_COMMAND} -E echo "Library paths:"
         COMMAND ${CMAKE_COMMAND} -E echo "  SPARROW_MODULE_PATH=$<TARGET_FILE:sparrow_rockfinch>"
         COMMAND ${CMAKE_COMMAND} -E echo "  TEST_SPARROW_HELPER_LIB_PATH=$<TARGET_FILE:test_sparrow_helper>"
+        COMMAND ${CMAKE_COMMAND} -E echo "  SPARROW_LIB_DIR=${SPARROW_LIB_DIR}"
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E echo "Running tests..."
         COMMAND ${CMAKE_COMMAND} -E echo ""
         COMMAND ${CMAKE_COMMAND} -E env 
             "SPARROW_MODULE_PATH=$<TARGET_FILE:sparrow_rockfinch>"
             "TEST_SPARROW_HELPER_LIB_PATH=$<TARGET_FILE:test_sparrow_helper>"
+            "LD_LIBRARY_PATH=${SPARROW_LIB_DIR}:$ENV{LD_LIBRARY_PATH}"
+            "DYLD_LIBRARY_PATH=${SPARROW_LIB_DIR}:$ENV{DYLD_LIBRARY_PATH}"
             ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_sparrow_integration.py
         COMMAND ${CMAKE_COMMAND} -E echo ""
         DEPENDS test_sparrow_helper sparrow_rockfinch sparrow-pycapsule
