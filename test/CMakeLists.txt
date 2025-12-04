@@ -21,7 +21,6 @@ target_link_libraries(${test_target}
     sparrow-pycapsule
     sparrow::sparrow
     doctest::doctest
-    Python::Python
 )
 
 if(MSVC)
@@ -85,7 +84,7 @@ add_custom_target(run_tests_with_junit_report
 
 set_target_properties(run_tests_with_junit_report PROPERTIES FOLDER "Tests utilities")
 
-Python_add_library(test_sparrow_helper MODULE test_sparrow_helper_module.cpp)
+nanobind_add_module(test_sparrow_helper test_sparrow_helper_module.cpp)
 
 target_link_libraries(test_sparrow_helper
     PRIVATE
@@ -95,17 +94,9 @@ target_link_libraries(test_sparrow_helper
 
 target_compile_features(test_sparrow_helper PRIVATE cxx_std_20)
 
-if(MSVC)
-    target_compile_options(test_sparrow_helper PRIVATE /W4)
-else()
-    target_compile_options(test_sparrow_helper PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
 set_target_properties(test_sparrow_helper PROPERTIES
     FOLDER tests
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}
-    # Python modules must not have a debug suffix - Python won't find them
-    DEBUG_POSTFIX ""
 )
 
 # Python integration test

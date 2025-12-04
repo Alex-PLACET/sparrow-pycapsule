@@ -64,4 +64,14 @@ if(SPARROW_PYCAPSULE_BUILD_TESTS)
     )
 endif()
 
-find_package(Python REQUIRED COMPONENTS Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module Development.Embed)
+
+find_package_or_fetch(
+    PACKAGE_NAME nanobind
+    GIT_REPOSITORY https://github.com/wjakob/nanobind.git
+    TAG v2.9.2
+)
+
+if(TARGET nanobind)
+    nanobind_build_library(nanobind-static)
+endif()

@@ -174,8 +174,8 @@ add_library(sparrow-pycapsule ${SPARROW_PYCAPSULE_LIBRARY_TYPE} ${SPARROW_PYCAPS
 
 target_link_libraries(sparrow-pycapsule
     PUBLIC 
-        Python::Python
-        sparrow::sparrow)
+        sparrow::sparrow
+        Python::Python)
 
 target_compile_definitions(sparrow-pycapsule PUBLIC ${SPARROW_PYCAPSULE_COMPILE_DEFINITIONS})
 
