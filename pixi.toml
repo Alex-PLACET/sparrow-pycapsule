@@ -27,6 +27,9 @@ version = "0.1.0"
 
 [dependencies]
 sparrow = ">=2.1.0"
+nanobind = "2.4.*"
+scikit-build-core = ">=0.10"
+pip = "*"
 sparrow_rockfinch = { path = "." }
 
 [package.build.backend]
