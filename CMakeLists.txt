@@ -52,14 +52,16 @@ file(STRINGS "${sparrow_rockfinch_version_path}" sparrow_rockfinch_version_defin
 
 foreach(ver ${sparrow_rockfinch_version_defines})
     if(ver MATCHES "constexpr int SPARROW_ROCKFINCH_VERSION_(MAJOR|MINOR|PATCH) = ([0-9]+);$")
-        set(PROJECT_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
+        set(SPARROW_ROCKFINCH_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
     endif()
 endforeach()
 
-set(CMAKE_PROJECT_VERSION
-    ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
+set(SPARROW_ROCKFINCH_VERSION
+    ${SPARROW_ROCKFINCH_VERSION_MAJOR}.${SPARROW_ROCKFINCH_VERSION_MINOR}.${SPARROW_ROCKFINCH_VERSION_PATCH}
+    CACHE INTERNAL "sparrow-rockfinch version")
+set(CMAKE_PROJECT_VERSION ${SPARROW_ROCKFINCH_VERSION})
 
-message(STATUS "Building sparrow-rockfinch v${CMAKE_PROJECT_VERSION}")
+message(STATUS "Building sparrow-rockfinch v${SPARROW_ROCKFINCH_VERSION}")
 
 # Binary version
 # See the following URL for explanations about the binary versioning
@@ -83,20 +85,10 @@ message(STATUS "sparrow-rockfinch binary version: v${SPARROW_ROCKFINCH_BINARY_VE
 
 option(SPARROW_ROCKFINCH_BUILD_TESTS "Build sparrow-rockfinch test suite" OFF)
 message(STATUS "🔧 Build tests: ${SPARROW_ROCKFINCH_BUILD_TESTS}")
-option(BUILD_DOCS "Build sparrow-rockfinch documentation" OFF)
-message(STATUS "🔧 Build docs: ${BUILD_DOCS}")
-
 set(CMAKE_DEBUG_POSTFIX "d")
 
 option(SPARROW_CONTRACTS_THROW_ON_FAILURE "Throw exceptions instead of aborting on contract failures" OFF)
 message(STATUS "🔧 Contracts throw on failure: ${SPARROW_CONTRACTS_THROW_ON_FAILURE}")
-
-option(ENABLE_COVERAGE "Enable test coverage" OFF)
-message(STATUS "🔧 Enable coverage: ${ENABLE_COVERAGE}")
-
-if(ENABLE_COVERAGE)
-    include(code_coverage)
-endif()
 
 include(CheckCXXSymbolExists)
 
@@ -126,15 +118,6 @@ if(ACTIVATE_LINTER)
     include(clang-format)
     include(clang-tidy)
 endif()
-
-# Sanitizers
-# ==========
-# include(sanitizers) // TODO: add sanitizers support
-
-# Dependencies
-# ============
-
-# include(external_dependencies) // TODO: add external dependencies support
 
 set(SPARROW_ROCKFINCH_COMPILE_DEFINITIONS "" CACHE STRING "List of public compile definitions of the sparrow-rockfinch target")
 
@@ -217,10 +200,6 @@ target_include_directories(sparrow-rockfinch-cpp PUBLIC
 set_target_properties(sparrow-rockfinch-cpp PROPERTIES CMAKE_CXX_EXTENSIONS OFF)
 target_compile_features(sparrow-rockfinch-cpp PUBLIC cxx_std_20)
 
-if(ENABLE_COVERAGE)
-    enable_coverage(sparrow-rockfinch)
-endif()
-
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND WIN32)
     target_compile_options(sparrow-rockfinch-cpp
         PUBLIC
@@ -244,20 +223,17 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     )
 endif()
 
-# Docs
-# ====
-if(BUILD_DOCS)
-    add_subdirectory(docs)
-endif()
-
 # Python module
 # =============
 option(SPARROW_ROCKFINCH_BUILD_PYTHON_MODULE "Build the sparrow-rockfinch Python module" ON)
 message(STATUS "🔧 Build Python module: ${SPARROW_ROCKFINCH_BUILD_PYTHON_MODULE}")
 
 if(SPARROW_ROCKFINCH_BUILD_PYTHON_MODULE)
-    set(SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION "${Python_SITEARCH}")
-    set(SPARROW_ROCKFINCH_PYTHON_RUNTIME_DESTINATION "${Python_SITEARCH}")
+    if(SKBUILD)
+        set(SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION ".")
+    else()
+        set(SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION "${Python_SITEARCH}")
+    endif()
 
     if(APPLE)
         set(SPARROW_ROCKFINCH_MODULE_INSTALL_RPATH "@loader_path")
@@ -275,10 +251,6 @@ if(SPARROW_ROCKFINCH_BUILD_PYTHON_MODULE)
     )
     target_link_libraries(sparrow_rockfinch PRIVATE sparrow-rockfinch-cpp sparrow::sparrow)
     target_compile_features(sparrow_rockfinch PRIVATE cxx_std_20)
-    # Define the module name macro to match the output filename (includes debug suffix)
-    target_compile_definitions(sparrow_rockfinch PRIVATE
-        SPARROW_MODULE_NAME=sparrow_rockfinch
-    )
     set_target_properties(sparrow_rockfinch PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${BINARY_BUILD_DIR}
         # Set RPATH so the module can find libsparrow-rockfinch at runtime
@@ -288,23 +260,22 @@ if(SPARROW_ROCKFINCH_BUILD_PYTHON_MODULE)
         INSTALL_RPATH "${SPARROW_ROCKFINCH_MODULE_INSTALL_RPATH}"
     )
 
-    install( 
-        TARGETS sparrow_rockfinch
-        EXPORT sparrow_rockfinchTargets
-        LIBRARY DESTINATION ${SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${SPARROW_ROCKFINCH_PYTHON_RUNTIME_DESTINATION}
+    install(TARGETS sparrow_rockfinch
+        LIBRARY DESTINATION ${SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION} COMPONENT python
+        RUNTIME DESTINATION ${SPARROW_ROCKFINCH_PYTHON_MODULE_DESTINATION} COMPONENT python
     )
 endif()
 
 # Tests
 # =====
 if(SPARROW_ROCKFINCH_BUILD_TESTS)
+    enable_testing()
     add_subdirectory(test)
 endif()
 
 # Installation
 # ============
+if(NOT SKBUILD)
 include(CMakePackageConfigHelpers)
 
 # Install target
@@ -356,3 +327,5 @@ install(EXPORT ${PROJECT_NAME}-targets
     FILE ${PROJECT_NAME}Targets.cmake
     NAMESPACE sparrow::
     DESTINATION ${SPARROW_CMAKECONFIG_INSTALL_DIR})
+
+endif()

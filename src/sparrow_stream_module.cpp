@@ -41,11 +41,6 @@ namespace sparrow::rockfinch
             }
 
             sparrow::arrow_array_stream_proxy proxy = import_stream_proxy_from_capsule(stream_capsule);
-            if (PyErr_Occurred())
-            {
-                throw nb::python_error();
-            }
-
             return SparrowStream(std::move(proxy));
         }
 
@@ -77,6 +72,7 @@ namespace sparrow::rockfinch
             ">>> stream = sp.SparrowStream.from_stream(reader)\n"
             ">>> # Use stream with Arrow-compatible libraries"
         )
+            .def(nb::init<>(), "Create an empty SparrowStream that accepts push().")
             .def_static(
                 "from_stream",
                 &sparrow_stream_from_stream,
@@ -108,7 +104,17 @@ namespace sparrow::rockfinch
                 "object\n"
                 "    A PyCapsule containing an ArrowArrayStream."
             )
-            .def("push", &SparrowStream::push, nb::arg("arr"), "Push a SparrowArray into the stream.")
+            .def(
+                "push",
+                [](SparrowStream& self, const SparrowArray& arr)
+                {
+                    self.push(SparrowArray(arr));
+                },
+                nb::arg("arr"),
+                "Push a copy of a SparrowArray.\n\n"
+                "Only streams created with SparrowStream() accept push; streams from\n"
+                "from_stream() raise RuntimeError."
+            )
             .def(
                 "pop",
                 &SparrowStream::pop,

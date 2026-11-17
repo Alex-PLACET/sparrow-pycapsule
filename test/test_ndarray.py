@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gc
+
 import numpy as np
 import pyarrow as pa
 import pytest
@@ -733,3 +735,74 @@ def test_ndarray_view_stays_alive_after_source_gc():
     gc.collect()
 
     assert view.tolist() == [1, 2, 3]
+
+
+# =============================================================================
+# Nullable float export and zero-copy __arrow_c_array__ export
+# =============================================================================
+
+
+@pytest.mark.parametrize("arrow_type", [pa.float32(), pa.float64()])
+def test_nullable_float_export_uses_nan(arrow_type):
+    """Nullable float arrays export with NaN sentinels for nulls."""
+    r = SparrowArray.from_arrow(pa.array([1.0, None, 3.0], type=arrow_type)).to_numpy()
+
+    assert r[0] == 1.0
+    assert np.isnan(r[1])
+    assert r[2] == 3.0
+    assert not r.flags.writeable
+
+    copied = SparrowArray.from_arrow(pa.array([1.0, None, 3.0], type=arrow_type)).to_numpy(
+        copy=True
+    )
+    assert copied.flags.writeable
+    assert np.isnan(copied[1])
+
+
+def test_nullable_float_export_respects_offset():
+    """Nulls in a sliced nullable float array still map to NaN."""
+    r = SparrowArray.from_arrow(pa.array([0.0, 1.0, None, 3.0]).slice(1)).to_numpy()
+
+    assert r[0] == 1.0
+    assert np.isnan(r[1])
+    assert r[2] == 3.0
+
+
+def test_arrow_c_array_export_is_zero_copy():
+    """__arrow_c_array__ borrows the source buffer instead of copying."""
+    n = np.arange(3, dtype=np.int64)
+    exported = pa.array(SparrowArray.from_ndarray(n))
+
+    n[0] = 99
+
+    assert exported.to_pylist() == [99, 1, 2]
+
+
+def test_arrow_c_array_export_keeps_source_alive():
+    """Exported capsules keep the SparrowArray alive after deletion."""
+    sa = SparrowArray.from_arrow(pa.array([1, 2, 3], type=pa.int64()))
+    exported = pa.array(sa)
+
+    del sa
+    gc.collect()
+
+    assert exported.to_pylist() == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        pa.array([{"a": 1, "b": "x"}, {"a": 2, "b": "y"}]),
+        pa.array(["a", "b", "a"]).dictionary_encode(),
+    ],
+    ids=["struct", "dictionary"],
+)
+def test_arrow_c_array_export_nested(source):
+    """Nested and dictionary-encoded arrays export and stay alive."""
+    sa = SparrowArray.from_arrow(source)
+    out = pa.array(sa)
+
+    del sa
+    gc.collect()
+
+    assert out.to_pylist() == source.to_pylist()

@@ -14,7 +14,7 @@ namespace sparrow::rockfinch
 
 
     // Generate version string
-    static const std::string SPARROW_ROCKFINCH_VERSION_STRING = std::to_string(SPARROW_ROCKFINCH_VERSION_MAJOR)
+    inline const std::string SPARROW_ROCKFINCH_VERSION_STRING = std::to_string(SPARROW_ROCKFINCH_VERSION_MAJOR)
                                                                 + "."
                                                                 + std::to_string(SPARROW_ROCKFINCH_VERSION_MINOR)
                                                                 + "."

@@ -13,6 +13,7 @@ This test validates:
 import pytest
 import pyarrow as pa
 
+import sparrow_helpers  # noqa: F401  (registers the build-tree module in sys.modules)
 
 # Import the module (try release first, then debug)
 try:
@@ -279,11 +280,8 @@ class TestSparrowStreamPushPop:
 
     def test_push_and_pop_single_array(self):
         """Test pushing and popping a single array."""
-        # Create an empty stream
-        batch = pa.record_batch({"x": []})
-        reader = pa.RecordBatchReader.from_batches(batch.schema, [])
-        stream = sr.SparrowStream.from_stream(reader)
-        
+        stream = sr.SparrowStream()
+
         # Create an array to push
         arr = sr.SparrowArray.from_arrow(pa.array([1, 2, 3, 4, 5]))
         
@@ -299,10 +297,7 @@ class TestSparrowStreamPushPop:
 
     def test_push_multiple_arrays_and_pop_all(self):
         """Test pushing multiple arrays and popping them all."""
-        # Create an empty stream
-        batch = pa.record_batch({"x": []})
-        reader = pa.RecordBatchReader.from_batches(batch.schema, [])
-        stream = sr.SparrowStream.from_stream(reader)
+        stream = sr.SparrowStream()
         
         # Push 3 arrays
         for i in range(3):
@@ -331,10 +326,7 @@ class TestSparrowStreamPushPop:
 
     def test_pop_preserves_fifo_order(self):
         """Test that pop returns arrays in FIFO order."""
-        # Create an empty stream
-        batch = pa.record_batch({"x": []})
-        reader = pa.RecordBatchReader.from_batches(batch.schema, [])
-        stream = sr.SparrowStream.from_stream(reader)
+        stream = sr.SparrowStream()
         
         # Push arrays with different values
         arr1 = sr.SparrowArray.from_arrow(pa.array([100, 101, 102]))
@@ -393,9 +385,7 @@ class TestSparrowStreamConsumedState:
 
     def test_push_does_not_consume_stream(self):
         """Verify that push operations don't consume the stream."""
-        batch = pa.record_batch({"x": []})
-        reader = pa.RecordBatchReader.from_batches(batch.schema, [])
-        stream = sr.SparrowStream.from_stream(reader)
+        stream = sr.SparrowStream()
         
         assert stream.is_consumed() is False
         
@@ -465,51 +455,87 @@ class TestSparrowStreamPushPopIntegration:
 
     def test_push_then_export(self):
         """Test pushing arrays then exporting the stream."""
-        # Create an empty stream
-        batch = pa.record_batch({"x": []})
-        reader = pa.RecordBatchReader.from_batches(batch.schema, [])
-        stream = sr.SparrowStream.from_stream(reader)
-        
-        # Push some arrays
-        arr1 = sr.SparrowArray.from_arrow(pa.array([1, 2, 3]))
-        arr2 = sr.SparrowArray.from_arrow(pa.array([4, 5, 6]))
+        stream = sr.SparrowStream()
+
+        # A record batch reader needs struct arrays, so push record batches.
+        arr1 = sr.SparrowArray.from_arrow(pa.record_batch({"x": [1, 2, 3]}))
+        arr2 = sr.SparrowArray.from_arrow(pa.record_batch({"x": [4, 5, 6]}))
         stream.push(arr1)
         stream.push(arr2)
-        
+
         # Export to PyArrow
         result_reader = pa.RecordBatchReader.from_stream(stream)
         result_batches = list(result_reader)
-        
+
         # Should have 2 batches
         assert len(result_batches) == 2
         assert result_batches[0].num_rows == 3
         assert result_batches[1].num_rows == 3
 
-    def test_pop_then_push_then_export(self):
-        """Test popping, then pushing, then exporting."""
-        # Create a stream with one batch
+    def test_push_to_imported_stream_raises(self):
+        """Pushing to a stream created by from_stream() raises RuntimeError."""
         batch = pa.record_batch({"x": [1, 2, 3]})
         reader = pa.RecordBatchReader.from_batches(batch.schema, [batch])
         stream = sr.SparrowStream.from_stream(reader)
-        
+
         # Pop the original batch
         original = stream.pop()
         assert original is not None
-        
-        # Push new arrays
-        arr1 = sr.SparrowArray.from_arrow(pa.array([10, 20]))
-        arr2 = sr.SparrowArray.from_arrow(pa.array([30, 40]))
-        stream.push(arr1)
-        stream.push(arr2)
-        
-        # Export to PyArrow
-        result_reader = pa.RecordBatchReader.from_stream(stream)
-        result_batches = list(result_reader)
-        
-        # Should have 2 batches (the newly pushed ones)
-        assert len(result_batches) == 2
-        assert result_batches[0].num_rows == 2
-        assert result_batches[1].num_rows == 2
+
+        with pytest.raises(RuntimeError):
+            stream.push(sr.SparrowArray.from_arrow(pa.record_batch({"x": [10, 20]})))
+
+    def test_push_keeps_source_array_usable(self):
+        """Push copies the array so the Python object stays usable."""
+        s = sr.SparrowStream()
+        a = sr.SparrowArray.from_arrow(pa.array([1, 2, 3]))
+        s.push(a)
+
+        assert len(a) == 3
+        assert pa.array(a).to_pylist() == [1, 2, 3]
+        assert s.pop().size() == 3
+
+    def test_from_arrow_rejects_consumed_capsules(self):
+        """Re-importing the same capsules raises ValueError."""
+
+        class Exporter:
+            def __init__(self):
+                schema, array = pa.array([1, 2, 3]).__arrow_c_array__()
+                self._capsules = (schema, array)
+
+            def __arrow_c_array__(self, requested_schema=None):
+                return self._capsules
+
+        exporter = Exporter()
+        sr.SparrowArray.from_arrow(exporter)
+
+        with pytest.raises(ValueError, match="already been consumed"):
+            sr.SparrowArray.from_arrow(exporter)
+
+    def test_from_arrow_rejects_swapped_capsules(self):
+        """Swapping schema and array capsules raises ValueError."""
+
+        class Exporter:
+            def __init__(self):
+                schema, array = pa.array([1, 2, 3]).__arrow_c_array__()
+                self._capsules = (array, schema)
+
+            def __arrow_c_array__(self, requested_schema=None):
+                return self._capsules
+
+        with pytest.raises(ValueError, match="arrow_schema"):
+            sr.SparrowArray.from_arrow(Exporter())
+
+    def test_from_stream_rejects_consumed_capsule(self):
+        """Re-importing the same stream capsule raises ValueError."""
+        batch = pa.record_batch({"x": [1, 2, 3]})
+        reader = pa.RecordBatchReader.from_batches(batch.schema, [batch])
+        capsule = reader.__arrow_c_stream__()
+
+        sr.SparrowStream.from_stream(capsule)
+
+        with pytest.raises(ValueError, match="already been consumed"):
+            sr.SparrowStream.from_stream(capsule)
 
     def test_partial_pop_then_export(self):
         """Test popping some arrays, then exporting the rest."""

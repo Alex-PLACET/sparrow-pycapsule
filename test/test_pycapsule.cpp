@@ -1,4 +1,7 @@
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
 #include <sparrow-rockfinch/pycapsule.hpp>
 
 #include <sparrow/array.hpp>
@@ -208,6 +211,38 @@ namespace sparrow::rockfinch
                 // The imported array should still be valid
                 CHECK(imported_arr.size() == 5);
             }
+
+            SUBCASE("rejects_consumed_capsules")
+            {
+                auto original_arr = make_test_array();
+                auto [schema_capsule, array_capsule] = export_array_to_capsules(original_arr);
+
+                PyObjectGuard schema_guard(schema_capsule);
+                PyObjectGuard array_guard(array_capsule);
+
+                auto imported_arr = import_array_from_capsules(schema_capsule, array_capsule);
+                CHECK_EQ(imported_arr.size(), 5);
+
+                CHECK_THROWS_AS(
+                    import_array_from_capsules(schema_capsule, array_capsule),
+                    std::invalid_argument
+                );
+            }
+
+            SUBCASE("rejects_swapped_capsules")
+            {
+                auto original_arr = make_test_array();
+                auto [schema_capsule, array_capsule] = export_array_to_capsules(original_arr);
+
+                PyObjectGuard schema_guard(schema_capsule);
+                PyObjectGuard array_guard(array_capsule);
+
+                CHECK_THROWS_AS(
+                    import_array_from_capsules(array_capsule, schema_capsule),
+                    std::invalid_argument
+                );
+                CHECK_EQ(PyErr_Occurred(), nullptr);
+            }
         }
 
         TEST_CASE("round_trip_export_import")
@@ -376,6 +411,26 @@ namespace sparrow::rockfinch
 
                 CHECK_NE(imported_proxy.pop(), std::nullopt);
             }
+
+            SUBCASE("rejects_consumed_capsule")
+            {
+                std::vector<sparrow::array> arrays;
+                arrays.push_back(make_test_array());
+
+                sparrow::arrow_array_stream_proxy original_proxy;
+                original_proxy.push(std::move(arrays));
+                PyObject* stream_capsule = export_stream_proxy_to_capsule(original_proxy);
+
+                PyObjectGuard capsule_guard(stream_capsule);
+
+                auto imported_proxy = import_stream_proxy_from_capsule(stream_capsule);
+                CHECK_NE(imported_proxy.pop(), std::nullopt);
+
+                CHECK_THROWS_AS(
+                    import_stream_proxy_from_capsule(stream_capsule),
+                    std::invalid_argument
+                );
+            }
         }
 
         TEST_CASE("round_trip_stream_export_import")
@@ -406,6 +461,41 @@ namespace sparrow::rockfinch
                 {
                     CHECK_EQ(next_array.value().size(), 5);
                 }
+            }
+        }
+
+        TEST_CASE("export_array_view_to_capsules")
+        {
+            PythonInitializer py_init;
+
+            SUBCASE("borrows_buffers_and_holds_owner")
+            {
+                sparrow::array arr = make_test_array();
+                PyObject* owner = PyList_New(0);
+                REQUIRE_NE(owner, nullptr);
+                const auto before = Py_REFCNT(owner);
+
+                auto [schema_capsule, array_capsule] = export_array_view_to_capsules(arr, owner);
+                REQUIRE_NE(schema_capsule, nullptr);
+                REQUIRE_NE(array_capsule, nullptr);
+                CHECK_GT(Py_REFCNT(owner), before);
+
+                auto* exported = static_cast<ArrowArray*>(
+                    PyCapsule_GetPointer(array_capsule, "arrow_array")
+                );
+                REQUIRE_NE(exported, nullptr);
+                CHECK(exported->buffers[1] == sparrow::get_arrow_array(arr)->buffers[1]);
+
+                {
+                    auto imported = import_array_from_capsules(schema_capsule, array_capsule);
+                    CHECK(imported == arr);
+                }
+
+                Py_XDECREF(schema_capsule);
+                Py_XDECREF(array_capsule);
+
+                CHECK_EQ(Py_REFCNT(owner), before);
+                Py_DECREF(owner);
             }
         }
 

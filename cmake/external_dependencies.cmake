@@ -64,7 +64,11 @@ if(SPARROW_ROCKFINCH_BUILD_TESTS)
     )
 endif()
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development.Module Development.Embed)
+set(_python_components Interpreter Development.Module)
+if(SPARROW_ROCKFINCH_BUILD_TESTS)
+    list(APPEND _python_components Development.Embed)
+endif()
+find_package(Python REQUIRED COMPONENTS ${_python_components})
 
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir

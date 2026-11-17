@@ -4,7 +4,6 @@
 #include <Python.h>
 #include <optional>
 
-#include <sparrow/array.hpp>
 #include <sparrow/arrow_interface/arrow_array_stream_proxy.hpp>
 #include "sparrow-rockfinch/sparrow_array_python_class.hpp"
 

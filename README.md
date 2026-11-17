@@ -27,9 +27,10 @@ The Sparrow Rockfinch Interface - A C++ library for exchanging Apache Arrow data
 ### Prerequisites
 
 ```bash
-# Using conda (recommended)
-conda env create -f environment-dev.yml
-conda activate sparrow-rockfinch
+# Using pixi (recommended)
+pixi install -e dev
+pixi run -e dev build
+pixi run -e dev all_tests
 
 # Or install manually
 # - CMake >= 3.28

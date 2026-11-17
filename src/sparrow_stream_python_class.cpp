@@ -19,7 +19,7 @@ namespace sparrow::rockfinch
         {
             throw std::runtime_error("Cannot push to a consumed SparrowStream");
         }
-        m_stream_proxy.push(sparrow::array(std::move(arr.get_array())));
+        m_stream_proxy.push(std::move(arr.get_array()));
     }
 
     PyObject* SparrowStream::export_to_capsule()

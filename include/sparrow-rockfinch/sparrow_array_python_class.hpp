@@ -45,13 +45,6 @@ namespace sparrow::rockfinch
         ~SparrowArray();
 
         /**
-         * @brief Export the array via the Arrow PyCapsule interface (__arrow_c_array__).
-         *
-         * @return A pair of (schema_capsule, array_capsule). Caller owns the references.
-         */
-        [[nodiscard]] std::pair<PyObject*, PyObject*> export_to_capsules() const;
-
-        /**
          * @brief Export the schema via the Arrow PyCapsule interface (__arrow_c_schema__).
          *
          * @return A PyCapsule containing an ArrowSchema. Caller owns the reference.
@@ -86,9 +79,8 @@ namespace sparrow::rockfinch
          * references its data buffer, preventing premature deallocation.
          *
          * @param owner The NumPy array Python object that owns the data.
-         * @param writable Whether the buffer can be written to via this array.
          */
-        void set_numpy_owner(PyObject* owner, bool writable);
+        void set_numpy_owner(PyObject* owner);
 
         /**
          * @brief Get the NumPy array that owns the underlying data, if any.
@@ -96,13 +88,6 @@ namespace sparrow::rockfinch
          * @return The PyObject* of the owning NumPy array, or nullptr if none was set.
          */
         [[nodiscard]] PyObject* numpy_owner() const;
-
-        /**
-         * @brief Check whether the NumPy-owned buffer is writable.
-         *
-         * @return true if the buffer is writable, false otherwise (or if no owner is set).
-         */
-        [[nodiscard]] bool numpy_owner_writable() const;
 
     private:
         /**
@@ -117,7 +102,6 @@ namespace sparrow::rockfinch
 
         sparrow::array m_array;
         PyObject* m_numpy_owner = nullptr;
-        bool m_numpy_owner_writable = false;
     };
 
 }  // namespace sparrow::rockfinch

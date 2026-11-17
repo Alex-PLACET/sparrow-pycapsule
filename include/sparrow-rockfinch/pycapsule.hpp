@@ -2,7 +2,6 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <utility>
-#include <vector>
 
 #include <Python.h>
 #include <sparrow-rockfinch/config/config.hpp>
@@ -13,10 +12,6 @@ namespace sparrow
     class array;
     class arrow_array_stream_proxy;
 }
-
-struct ArrowSchema;
-struct ArrowArray;
-struct ArrowArrayStream;
 
 namespace sparrow::rockfinch
 {
@@ -29,7 +24,8 @@ namespace sparrow::rockfinch
      *
      * @param schema_capsule PyCapsule containing an ArrowSchema
      * @param array_capsule PyCapsule containing an ArrowArray
-     * @return A sparrow array constructed from the capsules, or an empty array on error
+     * @return A sparrow array constructed from the capsules
+     * @throws std::invalid_argument if the capsule has the wrong name or was already consumed
      */
     SPARROW_ROCKFINCH_API array import_array_from_capsules(PyObject* schema_capsule, PyObject* array_capsule);
 
@@ -43,6 +39,22 @@ namespace sparrow::rockfinch
      * @return A pair of (schema_capsule, array_capsule), or (nullptr, nullptr) on error
      */
     SPARROW_ROCKFINCH_API std::pair<PyObject*, PyObject*> export_array_to_capsules(array& arr);
+
+    /**
+     * @brief Exports a zero-copy view of a sparrow array to both PyCapsules.
+     *
+     * The exported ArrowArray tree borrows the buffers of @p arr. @p owner is
+     * INCREF'd and DECREF'd (under the GIL) when the last exported node is released.
+     *
+     * @param arr The sparrow array to borrow buffers from
+     * @param owner The Python object keeping the buffers alive
+     * @return A pair of (schema_capsule, array_capsule), or (nullptr, nullptr) with a
+     *         Python error set on failure
+     */
+    SPARROW_ROCKFINCH_API std::pair<PyObject*, PyObject*> export_array_view_to_capsules(
+        const array& arr,
+        PyObject* owner
+    );
 
     // ========================================================================
     // ArrowSchema Export (PyCapsule Interface: __arrow_c_schema__)
@@ -80,8 +92,11 @@ namespace sparrow::rockfinch
      * of the stream data.
      *
      * @param stream_capsule PyCapsule containing an ArrowArrayStream
-     * @return An arrow_array_stream_proxy, or an empty proxy on error
+     * @return An arrow_array_stream_proxy
+     * @throws std::invalid_argument if the capsule has the wrong name or was already consumed
      */
-    SPARROW_ROCKFINCH_API arrow_array_stream_proxy import_stream_proxy_from_capsule(PyObject* stream_capsule);
+    SPARROW_ROCKFINCH_API arrow_array_stream_proxy import_stream_proxy_from_capsule(
+        PyObject* stream_capsule
+    );
 
 }
