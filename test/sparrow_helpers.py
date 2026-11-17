@@ -110,8 +110,11 @@ def _setup_modules() -> None:
     # Fallback: try to find modules in build directory
     test_dir = Path(__file__).parent
     build_dirs = [
-        test_dir.parent / "build" / "bin" / "Debug",
+        test_dir.parent / ".build" / "bin" / "Release",
+        test_dir.parent / ".build" / "bin" / "Debug",
+        test_dir.parent / ".build" / "bin",
         test_dir.parent / "build" / "bin" / "Release",
+        test_dir.parent / "build" / "bin" / "Debug",
         test_dir.parent / "build" / "bin",
     ]
 
